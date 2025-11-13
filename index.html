@@ -1,154 +1,396 @@
-#include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
-#include "paginaHTML.h"
+String pagina = R"===(
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Controle do Carrinho</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            overflow: hidden;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-const char *nome_da_rede = "Carrinho";
-const char *senha = "12345678";
+        .prevent-select {
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
 
-// Pinos da ponte H
-const int motorDireitaFrente = 3;   // GPIO3 (RX)
-const int motorDireitaTras = 0;     // GPIO0 
-const int motorEsquerdaFrente = 2;  // GPIO2 
-const int motorEsquerdaTras = 1;    // GPIO1 (TX)
+        .header {
+            text-align: center;
+            padding: 10px;
+            background-color: #2c3e50;
+            color: white;
+        }
 
-// Variáveis para controle de estado
-unsigned long ultimoComando = 0;
-const unsigned long timeoutComando = 100; // Timeout de 300ms
-String ultimoComandoRecebido = "0";
+        .control-container {
+            display: flex;
+            flex: 1;
+            padding: 30px;
+            gap: 30px;
+        }
 
-ESP8266WebServer servidor(80);
+        .control-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+        }
 
-void setup() {
-  // Configurar pinos dos motores como saída
-  pinMode(motorDireitaFrente, OUTPUT);
-  pinMode(motorDireitaTras, OUTPUT);
-  pinMode(motorEsquerdaFrente, OUTPUT);
-  pinMode(motorEsquerdaTras, OUTPUT);
+        .speed-control {
+            width: 80%;
+            margin: 20px 0;
+            text-align: center;
+        }
 
-  // Inicializar motores parados
-  parar();
-  
-  // Configurar rede Wi-Fi
-  WiFi.softAP(nome_da_rede, senha);
+        .speed-slider {
+            width: 100%;
+            height: 15px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #ddd;
+            outline: none;
+            border-radius: 10px;
+        }
 
-  // Rota para a página principal
-  servidor.on("/", []() {
-    servidor.send(200, "text/html", pagina);
-  });
+        .speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+        }
 
-  // Rota para o comando recebido
-  servidor.on("/pressionado", HTTP_POST, []() {
-    String estado = servidor.arg("plain");
-    if (estado.length() > 0) {
-      ultimoComandoRecebido = estado;
-      ultimoComando = millis();
-      executarComando(estado);
+        .control-button {
+            width: 150px;
+            height: 150px;
+            border: none;
+            border-radius: 50%;
+            font-size: 36px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.1s;
+            touch-action: manipulation;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .control-button::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: rgba(255, 255, 255, 0.2);
+            opacity: 0;
+            transition: opacity 0.3s;
+            border-radius: 50%;
+        }
+
+        .control-button:active::after {
+            opacity: 1;
+            animation: ripple 0.6s ease-out;
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: scale(0.8);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2.5);
+                opacity: 0;
+            }
+        }
+
+        .forward {
+            background-color: #27ae60;
+        }
+
+        .backward {
+            background-color: #e74c3c;
+        }
+
+        .left {
+            background-color: #f39c12;
+        }
+
+        .right {
+            background-color: #3498db;
+        }
+
+        .robot-icon {
+            font-size: 80px;
+            margin: 20px 0;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #2c3e50;
+            color: white;
+            font-size: 0.8em;
+        }
+
+        .fullscreen-button {
+            position: fixed;
+            bottom: 60px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            font-size: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+
+        @media (orientation: portrait) {
+            .orientation-warning {
+                display: flex;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0,0,0,0.9);
+                color: white;
+                justify-content: center;
+                align-items: center;
+                font-size: 24px;
+                z-index: 1000;
+                flex-direction: column;
+                padding: 20px;
+                text-align: center;
+            }
+            
+            .orientation-warning span {
+                font-size: 50px;
+                margin-bottom: 20px;
+            }
+        }
+
+        @media (orientation: landscape) {
+            .orientation-warning {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body class="prevent-select">
+    <div class="orientation-warning">
+        <span>🔄</span>
+        <p>Por favor, gire seu dispositivo para o modo paisagem para melhor experiência</p>
+    </div>
+
+    <button class="fullscreen-button" id="fullscreenBtn">⛶</button>
+
+    <div class="header">
+        <h1>🤖 Controle do Carrinho 🚗</h1>
+    </div>
+
+    <div class="control-container">
+        <!-- Painel esquerdo (frente/trás) -->
+        <div class="control-panel">
+            <button class="control-button forward" id="forwardBtn">↑</button>
+            <button class="control-button backward" id="backwardBtn">↓</button>
+        </div>
+
+        <!-- Painel central (velocidade) -->
+        <div class="control-panel">
+            <div class="robot-icon">🤖</div>
+            <div class="speed-control">
+                <h3>Velocidade</h3>
+                <input type="range" min="1" max="5" value="3" class="speed-slider" id="speedSlider">
+                <div id="speedValue">Velocidade: 3</div>
+            </div>
+        </div>
+
+        <!-- Painel direito (esquerda/direita) -->
+        <div class="control-panel">
+            <button class="control-button left" id="leftBtn">←</button>
+            <button class="control-button right" id="rightBtn">→</button>
+        </div>
+    </div>
+
+<script>
+    // Elementos do DOM
+    const forwardBtn = document.getElementById('forwardBtn');
+    const backwardBtn = document.getElementById('backwardBtn');
+    const leftBtn = document.getElementById('leftBtn');
+    const rightBtn = document.getElementById('rightBtn');
+    const speedSlider = document.getElementById('speedSlider');
+    const speedValue = document.getElementById('speedValue');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+    // Variáveis de controle
+    let activeButton = null;
+    let currentSpeed = 3;
+    let intervalId = null;
+
+    // Atualizar exibição da velocidade
+    speedSlider.addEventListener('input', function() {
+        currentSpeed = this.value;
+        speedValue.textContent = `Velocidade: ${currentSpeed}`;
+    });
+
+    // Função para vibrar o dispositivo (se suportado)
+    function vibrateDevice() {
+        if ('vibrate' in navigator) {
+            navigator.vibrate(30); // Vibração de 30ms
+        }
     }
-    servidor.send(200, "text/plain", "OK");
-  });
 
-  servidor.begin();
-}
-
-void loop() {
-  servidor.handleClient();
-  
-  // Verifica se passou tempo suficiente desde o último comando
-  if (millis() - ultimoComando > timeoutComando && ultimoComandoRecebido != "0") {
-    parar();
-    ultimoComandoRecebido = "0";
-  }
-}
-
-void executarComando(String comando) {
-  if (comando.length() == 0) return;
-  
-  if (comando == "0") {
-    parar();
-    return;
-  }
-
-  int separador = comando.indexOf('-');
-  if (separador == -1) {
-    // Comando sem velocidade (mantém compatibilidade com versão anterior)
-    char direcao = comando.charAt(0);
-    switch (direcao) {
-      case '1':
-        frente(255); // Velocidade máxima por padrão
-        break;
-      case '2':
-        virarEsquerda(255);
-        break;
-      case '3':
-        virarDireita(255);
-        break;
-      case '4':
-        tras(255);
-        break;
-      default:
-        parar();
-        break;
+    // Função para alternar tela cheia
+    function toggleFullscreen() {
+        try {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.error(`Erro ao tentar entrar em tela cheia: ${err.message}`);
+                });
+                vibrateDevice();
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        } catch (err) {
+            console.error("Erro no fullscreen:", err);
+        }
     }
-    return;
-  }
-  
-  char direcao = comando.charAt(0);
-  int velocidade = comando.substring(separador+1).toInt();
 
-  // Mapeia a velocidade de 1-5 para 150-255 (valores PWM)
-  int pwmValue = map(velocidade, 1, 5, 150, 255);
-  
-  switch (direcao) {
-    case '1':
-      frente(pwmValue);
-      break;
-    case '2':
-      virarEsquerda(pwmValue);
-      break;
-    case '3':
-      virarDireita(pwmValue);
-      break;
-    case '4':
-      tras(pwmValue);
-      break;
-    default:
-      parar();
-      break;
-  }
-}
+    // Botão de tela cheia
+    fullscreenBtn.addEventListener('click', toggleFullscreen);
 
-// Funções de controle dos motores com PWM
-void frente(int velocidade) {
-  analogWrite(motorDireitaFrente, velocidade);
-  digitalWrite(motorDireitaTras, LOW);
-  analogWrite(motorEsquerdaFrente, velocidade);
-  digitalWrite(motorEsquerdaTras, LOW);
-}
+    // Tentar entrar em tela cheia automaticamente no primeiro toque
+    document.addEventListener('click', function firstClick() {
+        try {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.error(`Erro ao tentar entrar em tela cheia: ${err.message}`);
+                });
+            }
+        } catch (err) {
+            console.error("Erro no fullscreen automático:", err);
+        }
+        document.removeEventListener('click', firstClick);
+    }, {once: true});
 
-void tras(int velocidade) {
-  digitalWrite(motorDireitaFrente, LOW);
-  analogWrite(motorDireitaTras, velocidade);
-  digitalWrite(motorEsquerdaFrente, LOW);
-  analogWrite(motorEsquerdaTras, velocidade);
-}
+    // Função para iniciar ação
+    function startAction(button, command) {
+        if (activeButton === null) {
+            activeButton = button;
+            button.classList.add('active');
+            vibrateDevice();
+            
+            // Efeito visual de pressionado
+            button.style.transform = 'translateY(3px)';
+            button.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)';
+            
+            // Enviar comando imediatamente
+            sendCommand(command);
+            
+            // Configurar intervalo para envio contínuo
+            intervalId = setInterval(() => {
+                sendCommand(command);
+            }, 100);
+        }
+    }
 
-void virarEsquerda(int velocidade) {
-  analogWrite(motorDireitaFrente, velocidade);
-  digitalWrite(motorDireitaTras, LOW);
-  digitalWrite(motorEsquerdaFrente, LOW);
-  digitalWrite(motorEsquerdaTras, LOW);
-}
+    // Função para parar ação
+    function stopAction() {
+        if (activeButton !== null) {
+            activeButton.classList.remove('active');
+            // Resetar efeito visual
+            activeButton.style.transform = 'translateY(0)';
+            activeButton.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+            
+            activeButton = null;
+            clearInterval(intervalId);
+            sendCommand('0'); // Comando de parada
+        }
+    }
 
-void virarDireita(int velocidade) {
-  digitalWrite(motorDireitaFrente, LOW);
-  digitalWrite(motorDireitaTras, LOW);
-  analogWrite(motorEsquerdaFrente, velocidade);
-  digitalWrite(motorEsquerdaTras, LOW);
-}
+    // Função para enviar comando
+    function sendCommand(command) {
+        // Adicionar velocidade ao comando (ex: '1-3' para frente velocidade 3)
+        const fullCommand = command !== '0' ? `${command}-${currentSpeed}` : '0';
+        fetch('/pressionado', {
+            method: 'POST',
+            body: fullCommand
+        }).catch(err => console.error('Erro:', err));
+    }
 
-void parar() {
-  digitalWrite(motorDireitaFrente, LOW);
-  digitalWrite(motorDireitaTras, LOW);
-  digitalWrite(motorEsquerdaFrente, LOW);
-  digitalWrite(motorEsquerdaTras, LOW);
-}
+    // Event listeners para toque/mouse
+    function setupButton(button, command) {
+        // Eventos de toque
+        button.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startAction(button, command);
+        });
+        
+        button.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            stopAction();
+        });
+        
+        // Eventos de mouse para compatibilidade com desktop
+        button.addEventListener('mousedown', () => {
+            startAction(button, command);
+        });
+        
+        button.addEventListener('mouseup', () => {
+            stopAction();
+        });
+        
+        button.addEventListener('mouseleave', () => {
+            if (activeButton === button) {
+                stopAction();
+            }
+        });
+    }
+
+    // Configurar botões
+    setupButton(forwardBtn, '1'); // Frente
+    setupButton(backwardBtn, '4'); // Trás
+    setupButton(leftBtn, '2'); // Esquerda
+    setupButton(rightBtn, '3'); // Direita
+
+    // Prevenir comportamento padrão de toque na página
+    document.addEventListener('touchmove', (e) => {
+        if (activeButton !== null) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    // Verificar suporte a fullscreen
+    if (!document.fullscreenEnabled) {
+        fullscreenBtn.style.display = 'none';
+    }
+</script>
+</body>
+</html>
+)===";
