@@ -1,110 +1,108 @@
 String pagina = R"===(
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Controle do Carrinho</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: Arial, sans-serif;
-      background-color: #f5f5f5;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .header {
-      text-align: center;
-      padding: 10px;
-      background-color: #2c3e50;
-      color: white;
-    }
-    .control-container {
-      flex: 1;
-      display: flex;
-      padding: 15px;
-      gap: 20px;
-      justify-content: center;
-      align-items: center;
-    }
-    .control-panel {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      gap: 25px;
-    }
-    .control-button {
-      width: 120px;
-      height: 120px;
-      border: none;
-      border-radius: 50%;
-      font-size: 36px;
-      color: white;
-      cursor: pointer;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.25);
-      transition: transform 0.1s;
-      user-select: none;
-    }
-    .forward { background: #27ae60; }
-    .backward { background: #e74c3c; }
-    .left { background: #f39c12; }
-    .right { background: #3498db; }
-    .control-button:active {
-      transform: scale(0.95);
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    .speed-control {
-      width: 80%;
-      text-align: center;
-    }
-    input[type=range] {
-      width: 100%;
-    }
-    .fullscreen-button {
-      position: fixed;
-      bottom: 15px;
-      right: 15px;
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background-color: #3498db;
-      color: white;
-      font-size: 20px;
-      border: none;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Controle do Carrinho</title>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100vh;
+    overflow: hidden;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .header {
+    width: 100%;
+    text-align: center;
+    background-color: #2c3e50;
+    color: white;
+    padding: 8px 0;
+    font-size: 1.2em;
+  }
+  .controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 15px;
+    width: 100%;
+  }
+  .row {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+  }
+  .control-button {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: none;
+    font-size: 36px;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.25);
+    transition: transform 0.1s;
+  }
+  .control-button:active {
+    transform: scale(0.95);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+  .forward { background-color: #27ae60; }
+  .backward { background-color: #e74c3c; }
+  .left { background-color: #f39c12; }
+  .right { background-color: #3498db; }
+  .speed-control {
+    width: 80%;
+    text-align: center;
+  }
+  input[type=range] {
+    width: 100%;
+  }
+  .fullscreen-button {
+    position: fixed;
+    bottom: 15px;
+    right: 15px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    font-size: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  }
+</style>
 </head>
 <body>
 
-  <div class="header"><h1>🤖 Controle do Carrinho 🚗</h1></div>
+  <div class="header">🤖 Controle do Carrinho 🚗</div>
 
-  <div class="control-container">
-    <div class="control-panel">
-      <button class="control-button forward" id="forwardBtn">↑</button>
-      <button class="control-button backward" id="backwardBtn">↓</button>
-    </div>
-    <div class="control-panel">
-      <div class="speed-control">
-        <h3>Velocidade</h3>
-        <input type="range" min="1" max="5" value="3" id="speedSlider">
-        <div id="speedValue">Velocidade: 3</div>
-      </div>
-    </div>
-    <div class="control-panel">
+  <div class="controls">
+    <button class="control-button forward" id="forwardBtn">↑</button>
+    <div class="row">
       <button class="control-button left" id="leftBtn">←</button>
       <button class="control-button right" id="rightBtn">→</button>
+    </div>
+    <button class="control-button backward" id="backwardBtn">↓</button>
+
+    <div class="speed-control">
+      <h3>Velocidade</h3>
+      <input type="range" min="1" max="5" value="3" id="speedSlider">
+      <div id="speedValue">Velocidade: 3</div>
     </div>
   </div>
 
@@ -169,12 +167,6 @@ String pagina = R"===(
     vibrate();
     if (document.fullscreenElement) document.exitFullscreen();
     else document.documentElement.requestFullscreen().catch(()=>{});
-  });
-
-  window.addEventListener('resize', () => {
-    if (window.innerHeight > window.innerWidth) {
-      alert('Gire o celular para o modo paisagem 😉');
-    }
   });
 </script>
 </body>
