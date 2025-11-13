@@ -26,17 +26,18 @@ String pagina = R"===(
     text-align: center;
     background-color: #2c3e50;
     color: white;
-    padding: 8px 0;
-    font-size: 1.2em;
+    padding: 6px 0;
+    font-size: 1.1em;
   }
   .controls {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     flex: 1;
-    gap: 15px;
+    gap: 12px;
     width: 100%;
+    margin-top: 4px;
   }
   .row {
     display: flex;
@@ -44,11 +45,11 @@ String pagina = R"===(
     gap: 25px;
   }
   .control-button {
-    width: 100px;
-    height: 100px;
+    width: 90px;
+    height: 90px;
     border-radius: 50%;
     border: none;
-    font-size: 36px;
+    font-size: 32px;
     color: white;
     display: flex;
     align-items: center;
@@ -65,12 +66,20 @@ String pagina = R"===(
   .backward { background-color: #e74c3c; }
   .left { background-color: #f39c12; }
   .right { background-color: #3498db; }
+  .servo1 { background-color: #9b59b6; }
+  .servo2 { background-color: #16a085; }
   .speed-control {
     width: 80%;
     text-align: center;
   }
   input[type=range] {
     width: 100%;
+  }
+  .extra-buttons {
+    margin-top: 8px;
+    display: flex;
+    justify-content: center;
+    gap: 25px;
   }
   .fullscreen-button {
     position: fixed;
@@ -104,6 +113,11 @@ String pagina = R"===(
       <input type="range" min="1" max="5" value="3" id="speedSlider">
       <div id="speedValue">Velocidade: 3</div>
     </div>
+
+    <div class="extra-buttons">
+      <button class="control-button servo1" id="servo1Btn">S1</button>
+      <button class="control-button servo2" id="servo2Btn">S2</button>
+    </div>
   </div>
 
   <button class="fullscreen-button" id="fullscreenBtn">⛶</button>
@@ -113,6 +127,8 @@ String pagina = R"===(
   const backwardBtn = document.getElementById('backwardBtn');
   const leftBtn = document.getElementById('leftBtn');
   const rightBtn = document.getElementById('rightBtn');
+  const servo1Btn = document.getElementById('servo1Btn');
+  const servo2Btn = document.getElementById('servo2Btn');
   const speedSlider = document.getElementById('speedSlider');
   const speedValue = document.getElementById('speedValue');
   const fullscreenBtn = document.getElementById('fullscreenBtn');
@@ -158,11 +174,17 @@ String pagina = R"===(
     btn.addEventListener('mouseleave', stopAction);
   }
 
+  // Movimentação básica
   setup(forwardBtn, '1');
   setup(backwardBtn, '4');
   setup(leftBtn, '2');
   setup(rightBtn, '3');
 
+  // Botões extras (servos)
+  servo1Btn.addEventListener('click', () => { vibrate(); sendCommand('5'); });
+  servo2Btn.addEventListener('click', () => { vibrate(); sendCommand('6'); });
+
+  // Tela cheia
   fullscreenBtn.addEventListener('click', () => {
     vibrate();
     if (document.fullscreenElement) document.exitFullscreen();
