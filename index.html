@@ -1,0 +1,154 @@
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include "paginaHTML.h"
+
+const char *nome_da_rede = "Carrinho";
+const char *senha = "12345678";
+
+// Pinos da ponte H
+const int motorDireitaFrente = 3;   // GPIO3 (RX)
+const int motorDireitaTras = 0;     // GPIO0 
+const int motorEsquerdaFrente = 2;  // GPIO2 
+const int motorEsquerdaTras = 1;    // GPIO1 (TX)
+
+// Variáveis para controle de estado
+unsigned long ultimoComando = 0;
+const unsigned long timeoutComando = 100; // Timeout de 300ms
+String ultimoComandoRecebido = "0";
+
+ESP8266WebServer servidor(80);
+
+void setup() {
+  // Configurar pinos dos motores como saída
+  pinMode(motorDireitaFrente, OUTPUT);
+  pinMode(motorDireitaTras, OUTPUT);
+  pinMode(motorEsquerdaFrente, OUTPUT);
+  pinMode(motorEsquerdaTras, OUTPUT);
+
+  // Inicializar motores parados
+  parar();
+  
+  // Configurar rede Wi-Fi
+  WiFi.softAP(nome_da_rede, senha);
+
+  // Rota para a página principal
+  servidor.on("/", []() {
+    servidor.send(200, "text/html", pagina);
+  });
+
+  // Rota para o comando recebido
+  servidor.on("/pressionado", HTTP_POST, []() {
+    String estado = servidor.arg("plain");
+    if (estado.length() > 0) {
+      ultimoComandoRecebido = estado;
+      ultimoComando = millis();
+      executarComando(estado);
+    }
+    servidor.send(200, "text/plain", "OK");
+  });
+
+  servidor.begin();
+}
+
+void loop() {
+  servidor.handleClient();
+  
+  // Verifica se passou tempo suficiente desde o último comando
+  if (millis() - ultimoComando > timeoutComando && ultimoComandoRecebido != "0") {
+    parar();
+    ultimoComandoRecebido = "0";
+  }
+}
+
+void executarComando(String comando) {
+  if (comando.length() == 0) return;
+  
+  if (comando == "0") {
+    parar();
+    return;
+  }
+
+  int separador = comando.indexOf('-');
+  if (separador == -1) {
+    // Comando sem velocidade (mantém compatibilidade com versão anterior)
+    char direcao = comando.charAt(0);
+    switch (direcao) {
+      case '1':
+        frente(255); // Velocidade máxima por padrão
+        break;
+      case '2':
+        virarEsquerda(255);
+        break;
+      case '3':
+        virarDireita(255);
+        break;
+      case '4':
+        tras(255);
+        break;
+      default:
+        parar();
+        break;
+    }
+    return;
+  }
+  
+  char direcao = comando.charAt(0);
+  int velocidade = comando.substring(separador+1).toInt();
+
+  // Mapeia a velocidade de 1-5 para 150-255 (valores PWM)
+  int pwmValue = map(velocidade, 1, 5, 150, 255);
+  
+  switch (direcao) {
+    case '1':
+      frente(pwmValue);
+      break;
+    case '2':
+      virarEsquerda(pwmValue);
+      break;
+    case '3':
+      virarDireita(pwmValue);
+      break;
+    case '4':
+      tras(pwmValue);
+      break;
+    default:
+      parar();
+      break;
+  }
+}
+
+// Funções de controle dos motores com PWM
+void frente(int velocidade) {
+  analogWrite(motorDireitaFrente, velocidade);
+  digitalWrite(motorDireitaTras, LOW);
+  analogWrite(motorEsquerdaFrente, velocidade);
+  digitalWrite(motorEsquerdaTras, LOW);
+}
+
+void tras(int velocidade) {
+  digitalWrite(motorDireitaFrente, LOW);
+  analogWrite(motorDireitaTras, velocidade);
+  digitalWrite(motorEsquerdaFrente, LOW);
+  analogWrite(motorEsquerdaTras, velocidade);
+}
+
+void virarEsquerda(int velocidade) {
+  analogWrite(motorDireitaFrente, velocidade);
+  digitalWrite(motorDireitaTras, LOW);
+  digitalWrite(motorEsquerdaFrente, LOW);
+  digitalWrite(motorEsquerdaTras, LOW);
+}
+
+void virarDireita(int velocidade) {
+  digitalWrite(motorDireitaFrente, LOW);
+  digitalWrite(motorDireitaTras, LOW);
+  analogWrite(motorEsquerdaFrente, velocidade);
+  digitalWrite(motorEsquerdaTras, LOW);
+}
+
+void parar() {
+  digitalWrite(motorDireitaFrente, LOW);
+  digitalWrite(motorDireitaTras, LOW);
+  digitalWrite(motorEsquerdaFrente, LOW);
+  digitalWrite(motorEsquerdaTras, LOW);
+}
